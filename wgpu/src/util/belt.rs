@@ -125,6 +125,14 @@ impl StagingBelt {
         // At minimum, we must have alignment sufficient to map the buffer.
         let alignment = alignment.get().max(crate::MAP_ALIGNMENT);
 
+        // WebKit's WebGPU rejects a command buffer whose second copy reads
+        // from a buffer that is still mapped when that copy is encoded; the
+        // specification only requires the buffer to be unmapped at submit.
+        // Close the chunks used so far, so each transfer reads from a chunk
+        // that was unmapped before the next transfer is encoded.
+        #[cfg(target_arch = "wasm32")]
+        self.finish();
+
         let mut chunk = if let Some(index) = self
             .active_chunks
             .iter()
